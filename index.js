@@ -19,6 +19,7 @@ const main = () => {
         void main(void) 
         {
             gl_Position = vec4(coordinates,0.0, 1.0);
+            gl_PointSize = 10.0;
         }`;
 
 
@@ -73,13 +74,46 @@ const main = () => {
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    let drawLine = (x, y, endX, endY) => {
-        const line = [x, y, endX, endY];
-        x = (x - HALF_SCREEN_WIDTH) / HALF_SCREEN_WIDTH;
-        y = (y - SCREEN_HEIGHT) / SCREEN_HEIGHT; 
-        endX = (endX - HALF_SCREEN_WIDTH) / HALF_SCREEN_WIDTH;
-        endY = (endY - SCREEN_HEIGHT) / SCREEN_HEIGHT; 
-        console.log(x, y, endX, endY);
+    // Takes a number and translate it from an integer
+    // to a float on the x axis for vertex
+    // writing.
+    const translateX = (num) => {
+        if (num == 0) {
+            return -1;
+        }
+        else if (num == SCREEN_WIDTH) {
+            return 1;
+        }
+        else if (num == HALF_SCREEN_WIDTH) {
+            return 0;
+        }
+        else {
+            return num / HALF_SCREEN_WIDTH - 1;
+        }
+    }
+
+    // See above, same except for y.
+    const translateY = (num) => {
+        if (num == 0) {
+            return 1;
+        }
+        else if (num == SCREEN_HEIGHT) {
+            return -1;
+        }
+        else if (num == HALF_SCREEN_HEIGHT) {
+            return 0;
+        }
+        else {
+            return num / HALF_SCREEN_HEIGHT * -1 + 1;
+        }
+    }
+
+    // Takes two points and draws a line between them.
+    const drawLine = (x, y, endX, endY) => {
+        const line = [translateX(x), translateY(y), translateX(endX), translateY(endY)];
+        for (let x of line) {
+            console.log(x);
+        }
         // Bind empty array to buffer object.
         gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
         // Pass vertices data to buffer
@@ -92,8 +126,32 @@ const main = () => {
         gl.drawArrays(gl.LINES, 0, line.length)
     };
 
-    drawLine(0,0,100,0);
+    const drawRectangleLines = (x, y, width, height) => {
+        x = translateX(x);
+        width = translateX(width);
+        y = translateY(y);
+        height = translateY(height);
+        lines = [x, y,
+            width - x,  y, // Pair
+            width - x, y,
+            width - x, height - y, // Pair
+            width - x, height - y,
+            x, height - y, // Pair
+            x, height - y,
+            x, y]; // Final Pair
+        // Bind empty array to buffer object.
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+        // Pass vertices data to buffer
+        gl.bufferData(gl.ARRAY_BUFFER
+            , new Float32Array(lines)
+            , gl.STATIC_DRAW);
 
+        // Unbind buffer.
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.drawArrays(gl.LINES, 0, lines.length)
+    };
+
+    drawRectangleLines(10, 10, 20, 20);
 };
 
 window.onload = main();
