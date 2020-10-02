@@ -10,70 +10,108 @@ if (gl == null) {
     throw "GL Assignment failed";
 }
 
+class Shader {
+    vertexShader: WebGLShader | null | undefined;
+    fragmentShader: WebGLShader | null | undefined;
+    shaderProgram: WebGLProgram | null | undefined;
+    defaultVShaderCode: string;
+    defaultFShaderCode: string;
+
+    constructor() {
+        this.vertexShader = gl?.createShader(gl.VERTEX_SHADER);
+        this.fragmentShader = gl?.createShader(gl.FRAGMENT_SHADER);
+        this.shaderProgram = gl?.createProgram();
+        this.defaultVShaderCode = `
+            attribute vec2 coordinates;
+            void main(void) 
+            {
+                gl_Position = vec4(coordinates, 0.0, 1.0);
+                gl_PointSize = 1.0;
+            }`;
+        this.defaultFShaderCode = `
+            void main(void)
+            { 
+                // Red green blue alpha
+                gl_FragColor = vec4(100.0,0.0,0.0, 0.5);
+            }`;
+    }
+
+    compileFragmentShader(color: string = this.defaultFShaderCode) {
+        if (this.fragmentShader != null) {
+            gl?.shaderSource(this.fragmentShader, color);
+            gl?.compileShader(this.fragmentShader);
+            console.log(gl?.getShaderInfoLog(this.fragmentShader));
+        }
+    }
+
+    compileVertexShader() {
+        if (this.vertexShader != null) {
+            gl?.shaderSource(this.vertexShader, this.defaultVShaderCode);
+            gl?.compileShader(this.vertexShader);
+            console.log(gl?.getShaderInfoLog(this.vertexShader));
+        }
+    }
+
+    // Step4 Attach and link.
+    attachLink() {
+        if (this.shaderProgram != null
+            && this.vertexShader != null
+            && this.fragmentShader != null
+            && gl != null) {
+            gl.attachShader(this.shaderProgram, this.vertexShader);
+            gl.attachShader(this.shaderProgram, this.fragmentShader);
+            gl.linkProgram(this.shaderProgram);
+            console.log(gl.getProgramInfoLog(this.shaderProgram));
+            gl.useProgram(this.shaderProgram);
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        } else {
+            throw "ShaderProgram invaild";
+        }
+    }
+
+
+    setFragColor(red: number, green: number, blue: number, alpha: number) {
+        this.defaultFShaderCode = `
+        void main(void)
+        {
+            gl_FragColor = vec4(${red}, ${green}, ${blue}, ${alpha});
+        }`;
+    }
+
+    final() {
+        let coord: number;
+        // Other
+        if (gl != null) {
+            if (shaderCompiler.shaderProgram != null) {
+                coord = gl.getAttribLocation(shaderCompiler.shaderProgram, "coordinates");
+                gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(coord);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            } else {
+                throw "Shader issue";
+            }
+        }
+    }
+}
+
 // Step 1, create graphics objects and shader program object.
 let vertexBuffer: WebGLBuffer | null = gl.createBuffer();
-let vertexShader: WebGLShader | null = gl.createShader(gl.VERTEX_SHADER);
-let fragmentShader: WebGLShader | null = gl.createShader(gl.FRAGMENT_SHADER);
-let shaderProgram: WebGLProgram | null = gl.createProgram();
 
-if(shaderProgram == null) {
-    throw "shaderProgram failed";
-}
-// Step 2, set code for shaders.
-let vertCode: string = `
-        attribute vec2 coordinates;
-        void main(void) 
-        {
-            gl_Position = vec4(coordinates, 0.0, 1.0);
-            gl_PointSize = 1.0;
-        }`;
-let fragCode: string = `
-        void main(void)
-        { 
-            // Red green blue alpha
-            gl_FragColor = vec4(100.0,0.0,0.0, 0.5);
-        }`;
+let shaderCompiler: Shader = new Shader();
 
-// Step3 Compile.
-// For the fragment shader.
-if (fragmentShader != null) {
-    gl.shaderSource(fragmentShader, fragCode);
-    gl.compileShader(fragmentShader);
-    console.log(gl.getShaderInfoLog(fragmentShader));
-}
-// For the VertexShader.
-if (vertexShader != null) {
-    gl.shaderSource(vertexShader, vertCode);
-    gl.compileShader(vertexShader);
-    console.log(gl.getShaderInfoLog(vertexShader));
-} else {
-    throw "vertexShader null";
-}
+const CompilerShader = () => {
+    shaderCompiler.compileFragmentShader();
+    shaderCompiler.compileVertexShader();
+    shaderCompiler.attachLink();
+    shaderCompiler.final();
+};
 
-// Step4 Attach and link.
-if (shaderProgram != null
-    && vertexShader != null
-    && fragmentShader != null) {
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-    console.log(gl.getProgramInfoLog(shaderProgram));
-    gl.useProgram(shaderProgram);
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-} else {
-    throw "ShaderProgram invaild";
-}
-
-// Step5 bind
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-
-let coord: number;
-// Other
-if (shaderProgram != null) {
-    coord = gl.getAttribLocation(shaderProgram, "coordinates");
-    gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(coord);
-    gl.viewport(0, 0, canvas.width, canvas.height);
+const CompilerShaderColor = (red: number, green: number, blue: number, alpha: number) => {
+    shaderCompiler.setFragColor(red, green, blue, alpha);
+    shaderCompiler.compileFragmentShader();
+    shaderCompiler.compileVertexShader();
+    shaderCompiler.attachLink();
+    shaderCompiler.final();
 }
 
 const glDraw = (vertBuffer: WebGLBuffer | null
@@ -167,8 +205,9 @@ const drawRectangle = (x: number
             points.push(xPos, yPos);
         }
     }
-
+    CompilerShaderColor(0.0, 100.0, 0.0, 0.5);
     glDraw(vertexBuffer, points, gl.POINTS, points.length);
 };
 
 drawRectangle(100, 100, 500, 500);
+
